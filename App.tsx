@@ -3,7 +3,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   Plane, Mail, Send, Printer, Copy, RefreshCw, Clock, MapPin, 
   Building2, CreditCard, Coffee, Download, Upload, Save, Trash2, 
-  FileText, History, ChevronRight
+  FileText
 } from 'lucide-react';
 import { FormData, TravelPlan, TravelSegment, AccommodationDetails, FoodBreakdown, TravelProfile, DailyFoodExpense } from './types';
 import { formatDate, calculateDaysBetween, getDatesInRange } from './utils/dateUtils';
@@ -134,7 +134,7 @@ const App: React.FC = () => {
 
   const generatePlan = useCallback((silent: boolean = false) => {
     if (!formData.tripStartDate || !formData.returnStartDate) {
-      if (!silent) alert("Please fill in at least the travel dates before generating.");
+      if (!silent) alert("Please fill in travel dates.");
       return;
     }
 
@@ -193,7 +193,7 @@ const App: React.FC = () => {
 
   const saveToProfiles = () => {
     if (!formData.university) {
-      alert("Please select a University Name to save this profile.");
+      alert("Please select a University.");
       return;
     }
     const newProfile: TravelProfile = {
@@ -202,26 +202,17 @@ const App: React.FC = () => {
       lastUpdated: new Date().toLocaleString(),
       data: { ...formData }
     };
-    
     const updatedProfiles = [newProfile, ...profiles.filter(p => p.university !== formData.university)];
     setProfiles(updatedProfiles);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfiles));
-    alert(`Plan for ${formData.university} saved to your library!`);
+    alert(`Plan for ${formData.university} saved!`);
   };
 
   const loadProfile = (profile: TravelProfile) => {
     setFormData(profile.data);
-    setTimeout(() => {
-        setPlan(null); 
-    }, 0);
+    setTimeout(() => setPlan(null), 0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  useEffect(() => {
-    if (formData.name && formData.university && formData.tripStartDate) {
-        generatePlan(true);
-    }
-  }, [formData.university, formData.tripStartDate, formData.returnStartDate]);
 
   const deleteProfile = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -232,47 +223,19 @@ const App: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
       setFormData(prev => {
         const newData = { ...prev, [name]: value };
-        
-        const updateArrivalPointByCity = (city: string) => {
-          if (city === 'Bangalore') return 'Silk Board';
-          if (city === 'Coimbatore') return 'Hope College';
-          return newData.destinationPoint;
-        };
-
         if (name === 'university' && UNIVERSITY_CITY_MAP[value]) {
-          const targetCity = UNIVERSITY_CITY_MAP[value];
-          newData.targetCity = targetCity;
-          newData.destinationPoint = updateArrivalPointByCity(targetCity);
+          newData.targetCity = UNIVERSITY_CITY_MAP[value];
         }
-
-        if (name === 'targetCity') {
-          newData.destinationPoint = updateArrivalPointByCity(value);
-        }
-
-        if (name === 'outstationMode') {
-          if (value === 'Bus') {
-            newData.boardingPoint = 'Hope College';
-          } else if (value === 'Train') {
-            newData.boardingPoint = 'Coimbatore Railway station';
-          }
-          // Default return mode to same for convenience, can be overridden
-          newData.returnOutstationMode = value as any;
-        }
-
-        // Convenience: auto-fill return defaults if onward values are changed
+        // Auto-sync return journey modes to match onward defaults
+        if (name === 'outstationMode') newData.returnOutstationMode = value as any;
         if (name === 'homeStationMode') newData.returnHomeStationMode = value as any;
         if (name === 'outstationLocalMode') newData.returnOutstationLocalMode = value as any;
-        if (name === 'homeStationCost') newData.returnHomeStationCost = value;
-        if (name === 'outstationTravelCost') newData.returnOutstationTravelCost = value;
-        if (name === 'outstationLocalCost') newData.returnOutstationLocalCost = value;
-        
         return newData;
       });
     }
@@ -281,29 +244,15 @@ const App: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsImporting(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      let parsedData: Partial<FormData> = {};
-      
-      if (file.name.endsWith('.csv')) {
-        parsedData = parseCsvToFormData(content);
-      } else if (file.name.endsWith('.json')) {
-        try {
-          parsedData = JSON.parse(content);
-        } catch (err) {
-          alert("Invalid JSON format");
-        }
-      }
-
+      const parsedData = parseCsvToFormData(content);
       setFormData(prev => ({ ...prev, ...parsedData }));
       setIsImporting(false);
-      alert("Configuration imported!");
     };
     reader.readAsText(file);
-    e.target.value = '';
   };
 
   const copyToClipboard = () => {
@@ -315,9 +264,9 @@ const App: React.FC = () => {
       selection?.addRange(range);
       try {
         document.execCommand('copy');
-        alert('Email draft copied to clipboard!');
+        alert('Email draft copied!');
       } catch (err) {
-        console.error('Failed to copy', err);
+        console.error(err);
       }
       selection?.removeAllRanges();
     }
@@ -338,7 +287,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-5">
             <div className="bg-indigo-600 p-4 rounded-2xl text-white shadow-lg shadow-indigo-100">
@@ -346,232 +294,131 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Travel Approval Tool</h1>
-              <p className="text-slate-500 font-medium tracking-tight">University Visit Planner & Multi-Stage Expense Calculator</p>
+              <p className="text-slate-500 font-medium">University Visit Planner</p>
             </div>
           </div>
           <div className="flex gap-3">
-            <button 
-              onClick={saveToProfiles}
-              className="px-5 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all flex items-center gap-2"
-            >
+            <button onClick={saveToProfiles} className="px-5 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all flex items-center gap-2">
               <Save className="w-4 h-4" /> Save Plan
             </button>
-            <button 
-              onClick={() => { setFormData(INITIAL_FORM_DATA); setPlan(null); }}
-              className="px-5 py-2.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-xl font-semibold transition-all flex items-center gap-2"
-            >
+            <button onClick={() => { setFormData(INITIAL_FORM_DATA); setPlan(null); }} className="px-5 py-2.5 bg-slate-50 text-slate-600 hover:bg-slate-200 rounded-xl font-semibold transition-all flex items-center gap-2">
               <RefreshCw className="w-4 h-4" /> Reset
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-5 space-y-6 overflow-y-auto max-h-[calc(100vh-160px)] pr-2 scrollbar-thin scrollbar-thumb-slate-200">
-            {/* HUB */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100 bg-gradient-to-br from-indigo-50/20 to-transparent">
+          <div className="lg:col-span-5 space-y-6 overflow-y-auto max-h-[calc(100vh-160px)] pr-2 scrollbar-thin">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2 text-indigo-600 font-bold uppercase tracking-wider text-xs">
                   <Download className="w-4 h-4" /> Data Hub
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isImporting}
-                  className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all gap-2"
-                >
+                <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all gap-2">
                   <Upload className="w-6 h-6 text-indigo-500" />
                   <span className="text-[11px] font-bold text-slate-600">Import Profile</span>
                 </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  accept=".csv,.json" 
-                  className="hidden" 
-                />
-                
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.json" className="hidden" />
                 {profiles.length > 0 && (
-                  <div className="flex flex-col gap-1 overflow-hidden">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Library ({profiles.length})</p>
-                    <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto scrollbar-thin">
-                      {profiles.map(p => (
-                        <div 
-                          key={p.id} 
-                          onClick={() => loadProfile(p)}
-                          className="flex items-center justify-between px-3 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-indigo-500 group transition-all"
-                        >
-                          <span className="text-[11px] font-bold text-slate-700 truncate">{p.university}</span>
-                          <button onClick={(e) => deleteProfile(e, p.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Library ({profiles.length})</p>
+                    {profiles.map(p => (
+                      <div key={p.id} onClick={() => loadProfile(p)} className="flex items-center justify-between px-3 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-indigo-500 group">
+                        <span className="text-[11px] font-bold text-slate-700 truncate">{p.university}</span>
+                        <button onClick={(e) => deleteProfile(e, p.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* FORM FIELDS */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
               <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <MapPin className="w-4 h-4" /> Basic Details
+                <MapPin className="w-4 h-4" /> Details
               </div>
               <div className="space-y-4">
-                <Input label="Your Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Full Name" />
-                <Select label="University Name" name="university" value={formData.university} onChange={handleInputChange} options={["", ...UNIVERSITIES]} />
-                <TextArea label="Purpose of Visit" name="reason" value={formData.reason} onChange={handleInputChange} />
+                <Input label="Your Name" name="name" value={formData.name} onChange={handleInputChange} />
+                <Select label="University" name="university" value={formData.university} onChange={handleInputChange} options={["", ...UNIVERSITIES]} />
+                <TextArea label="Purpose" name="reason" value={formData.reason} onChange={handleInputChange} />
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
               <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <Clock className="w-4 h-4" /> Timeline
+                <Clock className="w-4 h-4" /> Journey Timeline
               </div>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <Input label="Travel Start Date" type="date" name="tripStartDate" value={formData.tripStartDate} onChange={handleInputChange} />
-                <Input label="Start Time" type="time" name="tripStartTime" value={formData.tripStartTime} onChange={handleInputChange} />
-                <Input label="Arrival Date" type="date" name="tripReachDate" value={formData.tripReachDate} onChange={handleInputChange} />
-                <Input label="Arrival Time" type="time" name="tripReachTime" value={formData.tripReachTime} onChange={handleInputChange} />
-              </div>
-              <hr className="my-4 border-slate-100" />
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <Input label="Campus Visit Start" type="date" name="workStartDate" value={formData.workStartDate} onChange={handleInputChange} />
-                <Input label="Campus Visit End" type="date" name="workEndDate" value={formData.workEndDate} onChange={handleInputChange} />
-              </div>
-              <hr className="my-4 border-slate-100" />
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Return Journey Start" type="date" name="returnStartDate" value={formData.returnStartDate} onChange={handleInputChange} />
-                <Input label="Return Start Time" type="time" name="returnStartTime" value={formData.returnStartTime} onChange={handleInputChange} />
-                <Input label="Home Reach Date" type="date" name="returnReachDate" value={formData.returnReachDate} onChange={handleInputChange} />
-                <Input label="Home Reach Time" type="time" name="returnReachTime" value={formData.returnReachTime} onChange={handleInputChange} />
+                <Input label="Onward Date" type="date" name="tripStartDate" value={formData.tripStartDate} onChange={handleInputChange} />
+                <Input label="Onward Time" type="time" name="tripStartTime" value={formData.tripStartTime} onChange={handleInputChange} />
+                <Input label="Return Date" type="date" name="returnReachDate" value={formData.returnReachDate} onChange={handleInputChange} />
+                <Input label="Return Time" type="time" name="returnReachTime" value={formData.returnReachTime} onChange={handleInputChange} />
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
               <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <Building2 className="w-4 h-4" /> Locations
+                <RefreshCw className="w-4 h-4" /> Modes & Costs
               </div>
-              <div className="space-y-4">
-                <Input label="Home/Base Location" name="homeLocation" value={formData.homeLocation} onChange={handleInputChange} />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Base City" name="baseCity" value={formData.baseCity} onChange={handleInputChange} />
-                  <Input label="Target City" name="targetCity" value={formData.targetCity} onChange={handleInputChange} />
+              <div className="space-y-6">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                   <p className="text-xs font-bold text-slate-500 uppercase">Onward Journey</p>
+                   <div className="grid grid-cols-2 gap-4">
+                     <Select label="Home Station" name="homeStationMode" value={formData.homeStationMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
+                     <Input label="Cost" type="number" name="homeStationCost" value={formData.homeStationCost} onChange={handleInputChange} />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <Select label="Outstation" name="outstationMode" value={formData.outstationMode} onChange={handleInputChange} options={['Bus', 'Train', 'Flight', 'NA']} />
+                     <Input label="Cost" type="number" name="outstationTravelCost" value={formData.outstationTravelCost} onChange={handleInputChange} />
+                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Boarding Point (Base)" name="boardingPoint" value={formData.boardingPoint} onChange={handleInputChange} />
-                  <Input label="Arrival Point (Target)" name="destinationPoint" value={formData.destinationPoint} onChange={handleInputChange} />
-                </div>
-                <Input label="Hotel Name" name="hotelName" value={formData.hotelName} onChange={handleInputChange} />
-              </div>
-            </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <CreditCard className="w-4 h-4" /> Onward Journey
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Home Station Mode" name="homeStationMode" value={formData.homeStationMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
-                    <Input label="Cost" type="number" name="homeStationCost" value={formData.homeStationCost} onChange={handleInputChange} disabled={formData.homeStationMode === 'NA'} />
-                  </div>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                   <p className="text-xs font-bold text-slate-500 uppercase">Return Journey</p>
+                   <div className="grid grid-cols-2 gap-4">
+                     <Select label="Travel Mode" name="returnOutstationMode" value={formData.returnOutstationMode} onChange={handleInputChange} options={['Bus', 'Train', 'Flight', 'NA']} />
+                     <Input label="Cost" type="number" name="returnOutstationTravelCost" value={formData.returnOutstationTravelCost} onChange={handleInputChange} />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <Select label="Home Station" name="returnHomeStationMode" value={formData.returnHomeStationMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
+                     <Input label="Cost" type="number" name="returnHomeStationCost" value={formData.returnHomeStationCost} onChange={handleInputChange} />
+                   </div>
                 </div>
-                <div className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Travel Mode" name="outstationMode" value={formData.outstationMode} onChange={handleInputChange} options={['Bus', 'Train', 'Flight', 'NA']} />
-                    <Input label="Ticket Cost" type="number" name="outstationTravelCost" value={formData.outstationTravelCost} onChange={handleInputChange} disabled={formData.outstationMode === 'NA'} />
-                  </div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Local Mode at Target" name="outstationLocalMode" value={formData.outstationLocalMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
-                    <Input label="Local Trip Cost" type="number" name="outstationLocalCost" value={formData.outstationLocalCost} onChange={handleInputChange} disabled={formData.outstationLocalMode === 'NA'} />
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <RefreshCw className="w-4 h-4" /> Return Journey
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Local Mode at Target" name="returnOutstationLocalMode" value={formData.returnOutstationLocalMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
-                    <Input label="Local Trip Cost" type="number" name="returnOutstationLocalCost" value={formData.returnOutstationLocalCost} onChange={handleInputChange} disabled={formData.returnOutstationLocalMode === 'NA'} />
-                  </div>
-                </div>
-                <div className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Travel Mode" name="returnOutstationMode" value={formData.returnOutstationMode} onChange={handleInputChange} options={['Bus', 'Train', 'Flight', 'NA']} />
-                    <Input label="Ticket Cost" type="number" name="returnOutstationTravelCost" value={formData.returnOutstationTravelCost} onChange={handleInputChange} disabled={formData.returnOutstationMode === 'NA'} />
-                  </div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Home Station Mode" name="returnHomeStationMode" value={formData.returnHomeStationMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
-                    <Input label="Cost" type="number" name="returnHomeStationCost" value={formData.returnHomeStationCost} onChange={handleInputChange} disabled={formData.returnHomeStationMode === 'NA'} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-2 mb-6 text-indigo-600 font-bold uppercase tracking-wider text-xs">
-                <Coffee className="w-4 h-4" /> Campus & Stay
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select label="Campus Local Mode" name="dailyUniversityMode" value={formData.dailyUniversityMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
-                    <Input label="Cost Per Trip" type="number" name="dailyUniversityCost" value={formData.dailyUniversityCost} onChange={handleInputChange} disabled={formData.dailyUniversityMode === 'NA'} />
-                  </div>
-                </div>
                 <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-4">
+                  <p className="text-xs font-bold text-slate-500 uppercase">Campus Local</p>
                   <div className="grid grid-cols-2 gap-4">
-                    <Input label="Hotel Rate" type="number" name="hotelDailyCost" value={formData.hotelDailyCost} onChange={handleInputChange} />
-                    <Input label="Early Check-in" type="number" name="earlyCheckInCost" value={formData.earlyCheckInCost} onChange={handleInputChange} />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" id="earlyCheckIn" name="earlyCheckIn" checked={formData.earlyCheckIn} onChange={handleInputChange as any} className="w-4 h-4 rounded text-indigo-600" />
-                    <label htmlFor="earlyCheckIn" className="text-xs font-semibold text-slate-600">Apply early check-in charge</label>
+                    <Select label="Mode" name="dailyUniversityMode" value={formData.dailyUniversityMode} onChange={handleInputChange} options={['Cab', 'Auto', 'Cab / Auto', 'NA']} />
+                    <Input label="Trip Cost" type="number" name="dailyUniversityCost" value={formData.dailyUniversityCost} onChange={handleInputChange} />
                   </div>
                 </div>
               </div>
 
-              <button 
-                onClick={() => generatePlan(false)}
-                className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 active:translate-y-0"
-              >
+              <button onClick={() => generatePlan(false)} className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-100 flex items-center justify-center gap-3">
                 <Send className="w-5 h-5" /> Generate draft
               </button>
             </div>
           </div>
 
-          {/* EMAIL PREVIEW SECTION */}
           <div className="lg:col-span-7 h-fit sticky top-10">
             {plan ? (
               <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-900 px-8 py-5 flex items-center justify-between text-white">
                   <div className="flex items-center gap-3">
                     <Mail className="w-5 h-5 text-indigo-400" />
-                    <span className="font-semibold text-sm tracking-wide uppercase">Email draft preview</span>
+                    <span className="font-semibold text-sm uppercase">Email draft preview</span>
                   </div>
                   <div className="flex gap-4">
-                    <button onClick={copyToClipboard} className="flex items-center gap-2 text-xs font-bold hover:text-indigo-400 transition-colors">
-                      <Copy className="w-4 h-4" /> COPY FOR GMAIL
-                    </button>
-                    <button onClick={() => window.print()} className="flex items-center gap-2 text-xs font-bold hover:text-indigo-400 transition-colors">
-                      <Printer className="w-4 h-4" /> PRINT
-                    </button>
+                    <button onClick={copyToClipboard} className="text-xs font-bold hover:text-indigo-400 flex items-center gap-1"><Copy className="w-4 h-4" /> COPY</button>
+                    <button onClick={() => window.print()} className="text-xs font-bold hover:text-indigo-400 flex items-center gap-1"><Printer className="w-4 h-4" /> PRINT</button>
                   </div>
                 </div>
                 
-                <div ref={emailRef} className="p-10 bg-white text-black font-serif text-[14px] leading-normal overflow-y-auto max-h-[85vh] email-content-container">
+                <div ref={emailRef} className="p-10 bg-white text-black font-serif text-[14px] leading-normal email-content-container overflow-y-auto max-h-[80vh]">
                   <p><strong>Subject: Travel Plan Approval Request | {plan.userName} | {plan.university} | {formatDate(plan.startDate)} to {formatDate(plan.endDate)}</strong></p>
                   <br />
                   <p>Hi Team,</p>
@@ -645,11 +492,11 @@ const App: React.FC = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', marginBottom: '20px' }} border={1}>
                     <thead>
                       <tr style={{ backgroundColor: '#f3f4f6' }}>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Description</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>From</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>To</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Duration</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Amount (INR)</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Description</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>From</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>To</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Duration</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Amount (INR)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -662,7 +509,7 @@ const App: React.FC = () => {
                       </tr>
                       {plan.accommodation.earlyCheckIn && (
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '8px', color: '#000' }}><strong>Early check-in charges</strong></td>
+                          <td style={{ border: '1px solid #000', padding: '8px' }}><strong>Early check-in charges</strong></td>
                           <td style={{ border: '1px solid #000', padding: '8px' }}>-</td>
                           <td style={{ border: '1px solid #000', padding: '8px' }}>-</td>
                           <td style={{ border: '1px solid #000', padding: '8px' }}>-</td>
@@ -681,10 +528,10 @@ const App: React.FC = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', marginBottom: '20px' }} border={1}>
                     <thead>
                       <tr style={{ backgroundColor: '#f3f4f6' }}>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Date</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Number of meals</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Expense per meal</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', color: '#000' }}>Amount</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Date</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Number of meals</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Expense per meal</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -710,26 +557,9 @@ const App: React.FC = () => {
               </div>
             ) : (
               <div className="bg-white rounded-3xl shadow-sm border-4 border-dashed border-slate-200 h-[600px] flex flex-col items-center justify-center p-12 text-center text-slate-400">
-                <div className="p-6 bg-slate-50 rounded-full mb-6">
-                  <Mail className="w-16 h-16 opacity-30" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-500 mb-3">Your Itinerary</h2>
-                <p className="max-w-xs mx-auto text-slate-400 font-medium tracking-tight">Fill in the details on the left to generate your approval email draft.</p>
-                
-                {profiles.length > 0 && (
-                  <div className="mt-8 grid grid-cols-2 gap-3 w-full max-w-md">
-                    {profiles.slice(0, 4).map(p => (
-                      <button 
-                        key={p.id}
-                        onClick={() => loadProfile(p)}
-                        className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition-all text-left"
-                      >
-                        <Building2 className="w-4 h-4 text-indigo-400" />
-                        <span className="text-xs font-bold text-slate-600 truncate">{p.university}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Mail className="w-16 h-16 opacity-30 mb-6" />
+                <h2 className="text-2xl font-bold text-slate-500 mb-3">Your Travel Plan</h2>
+                <p className="max-w-xs mx-auto">Fill in the details to generate your approval email draft.</p>
               </div>
             )}
           </div>
@@ -738,14 +568,7 @@ const App: React.FC = () => {
       <style>{`
         .email-content-container, .email-content-container * {
           color: #000 !important;
-        }
-        .email-content-container strong {
-          color: #000 !important;
-        }
-        .email-content-container table td, 
-        .email-content-container table th {
-          border: 1px solid #000 !important;
-          color: #000 !important;
+          border-color: #000 !important;
         }
       `}</style>
     </div>
