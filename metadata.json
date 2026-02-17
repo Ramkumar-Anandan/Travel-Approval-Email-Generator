@@ -1,0 +1,5 @@
+{
+  "name": "Travel Plan Generator",
+  "description": "A sophisticated tool for planning university visits, calculating multi-stage travel expenses, and generating a professional travel plan approval email based on specific institutional formats.",
+  "requestFramePermissions": []
+}
